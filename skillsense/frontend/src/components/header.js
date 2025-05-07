@@ -1,5 +1,4 @@
 import React from 'react';
-import YandexGPTForm from './YandexGPTForm';
 import './header.css';
 
 const Header = () => {
@@ -18,6 +17,10 @@ const Header = () => {
             <li><a href="/analyzer" className="nav-link">Анализ</a></li>
           </ul>
         </nav>
+        <div className="auth-actions">
+            <a className="auth-link" href="/signin"> Войти </a>
+            <a className="auth-link gradient-link" href="/signup"> Попрбовать бесплатно </a>
+        </div>
       </div>
     </header>
   );

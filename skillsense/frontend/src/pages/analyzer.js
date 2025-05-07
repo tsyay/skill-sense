@@ -8,9 +8,13 @@ const Analyzer = () => {
       <div className="analyzer-content">
         <h1 className="analyzer-title">SkillSense Analyzer</h1>
         <p className="analyzer-description">
-          Введите ваш запрос для анализа навыков и компетенций. Наш сервис поможет определить 
+          Введите ваши запрос для анализа навыков и компетенций. Наш сервис поможет определить 
           ключевые умения и предложит пути развития вашей карьеры.
         </p>
+        <YandexGPTForm />
+        <YandexGPTForm />
+        <YandexGPTForm />
+        <YandexGPTForm />
         <YandexGPTForm />
         <HHru />
       </div>
