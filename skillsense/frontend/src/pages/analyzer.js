@@ -1,24 +1,9 @@
 import React from 'react';
-import '../styles/analyzer.css';
-import YandexGPTForm from '../components/YandexGPTForm';
-import HHru from '../components/hhru';
+import Hero from '../components/hero';
+
 const Analyzer = () => {
   return (
-    <div className="analyzer-container">
-      <div className="analyzer-content">
-        <h1 className="analyzer-title">SkillSense Analyzer</h1>
-        <p className="analyzer-description">
-          Введите ваши запрос для анализа навыков и компетенций. Наш сервис поможет определить 
-          ключевые умения и предложит пути развития вашей карьеры.
-        </p>
-        <YandexGPTForm />
-        <YandexGPTForm />
-        <YandexGPTForm />
-        <YandexGPTForm />
-        <YandexGPTForm />
-        <HHru />
-      </div>
-    </div>
+    <Hero />
   );
 };
 
