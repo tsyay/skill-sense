@@ -8,7 +8,7 @@
     background-color: #f6f8fb;
 }
 .hero-container {
-    width: 1440px;
+    max-width: 1440px;
     height: 90vh;
     margin: 0 auto;
 
@@ -17,7 +17,7 @@
     align-items: center;
     justify-content: center;
 
-    gap: 2rem;
+    gap: 1rem;
 
 }
 
@@ -37,7 +37,7 @@
 }
 
 .hero-heading {
-    width: 1080px;
+    max-width: 1080px;
     font-size: 3rem;
     text-align: center;
     white-space: pre-wrap;
@@ -50,7 +50,7 @@
 }
 
 .hero-subtitle {
-    width: 600px;
+    max-width: 600px;
     color: #4b5563;
     text-align: center;
 }
