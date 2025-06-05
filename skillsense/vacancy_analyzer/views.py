@@ -3,6 +3,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .services.yandex_gpt import YandexGPT
 from .services.hh_api import HHAPI
+import json
+
 # Create your views here.
 def front(request):
     context = { }
@@ -27,3 +29,22 @@ def get_professional_roles(request):
     hh = HHAPI()
     professional_roles = hh.get_professional_roles()
     return JsonResponse({"professional_roles": professional_roles})
+
+@csrf_exempt
+def analyze_vacancy(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            prompt = data.get('prompt')
+            
+            if not prompt:
+                return JsonResponse({'error': 'No prompt provided'}, status=400)
+            
+            gpt = YandexGPT()
+            result = gpt.generate_text(prompt)
+            
+            return JsonResponse(result, safe=False)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
