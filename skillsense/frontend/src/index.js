@@ -5,15 +5,13 @@ import '@fontsource/roboto/700.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import MainPage from './pages/mainPage';
-import Header from './components/header';
+import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <Header />
-    <MainPage />
+    <App />
   </React.StrictMode>
 );
 
