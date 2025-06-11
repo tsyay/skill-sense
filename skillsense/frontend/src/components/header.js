@@ -16,6 +16,7 @@ const Header = () => {
             <li><a href="/contact" className="nav-link">Контакты</a></li>
             <li><a href="/analyzer" className="nav-link">Анализ</a></li>
             <li><a href="/vacancy-analysis" className="nav-link">Тест</a></li>
+            <li><a href="/vacancy-analysis-hh" className="nav-link">Анализ HH.ru</a></li>
           </ul>
         </nav>
         <div className="auth-actions">

@@ -11,13 +11,27 @@ def front(request):
     return render(request, "index.html", context)
 
 
-@csrf_exempt  # Для упрощения (в продакшене используйте аутентификацию!)
+@csrf_exempt
 def generate_text(request):
     if request.method == "POST":
-        prompt = request.POST.get("prompt")
-        gpt = YandexGPT()
-        result = gpt.generate_text(prompt)
-        return JsonResponse({"response": result})
+        try:
+            data = json.loads(request.body)
+            prompt = data.get('prompt')
+            query = data.get('query')
+            
+            if not query:
+                return JsonResponse({"error": "No query provided"}, status=400)
+            
+            gpt = YandexGPT()
+            result = gpt.generate_text(f"{prompt}\n\nТекст: {query}")
+            
+            # Extract city from the result
+            city = result.strip()
+            return JsonResponse({"city": city})
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data"}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Only POST allowed"}, status=400)
 
 def get_areas(request):
