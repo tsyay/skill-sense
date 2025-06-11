@@ -98,3 +98,21 @@ def extract_professional_role(request):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Only POST allowed"}, status=400)
+
+@csrf_exempt
+def generate_text_about_skill(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            query = data.get('query')
+            
+            if not query:
+                return JsonResponse({"error": "No query provided"}, status=400)
+            
+            gpt = YandexGPT()
+            result = gpt.extract_professional_role(f"Дополни информацию о навыке.\n\nТекст: {query}")
+            
+            return JsonResponse({"role": result.strip()})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Only POST allowed"}, status=400)

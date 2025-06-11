@@ -114,3 +114,31 @@ class YandexGPT:
         
         return role
 
+    def generate_text_about_skill(self, prompt):
+        system_prompt = (
+                "Ты парень, который занимается анализом вакансий и подбирает для них соответствующие навыки. "
+                "Твоя задача - найти более подробное описание для этого навыка"
+               )
+
+        data = {
+            "modelUri": f"gpt://{folder_id}/yandexgpt",
+            "completionOptions": {"temperature": 0.3, "maxTokens": 1000},
+            "messages": [
+                {
+                    "role": "system",
+                    "text": system_prompt
+                },
+                {"role": "user", "text": prompt}
+            ]
+        }
+
+        response = requests.post(
+            URL,
+            headers={
+                "Accept": "application/json",
+                "Authorization": f"Bearer {iam_token}"
+            },
+            json=data,
+        ).json()
+
+        return response['result']['alternatives'][0]['message']['text']

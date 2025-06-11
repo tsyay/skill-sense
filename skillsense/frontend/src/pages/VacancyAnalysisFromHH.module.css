@@ -1,8 +1,12 @@
 .container {
     width: 100%;
-    min-height: 100vh;
+    min-height: 90vh;
     background-color: #f6f8fb;
     padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding-bottom: 100px;
 }
 
 .title {
@@ -18,121 +22,189 @@
     -webkit-text-fill-color: transparent;
 }
 
-.errorMessage {
-    padding: 1rem;
-    margin: 1rem 0;
-    background-color: #fee2e2;
-    border: 1px solid #ef4444;
-    color: #b91c1c;
-    border-radius: 0.5rem;
-    text-align: center;
-}
-
-.querySection {
-    max-width: 800px;
+.chatContainer {
+    flex: 1;
+    max-width: 900px;
     margin: 0 auto;
-    padding: 2rem;
-    background: white;
-    border-radius: 1rem;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-bottom: 2rem;
+    overflow-y: auto;
 }
 
-.queryTitle {
-    font-size: 1.5rem;
+.message {
+    display: flex;
+    width: 100%;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.userMessage {
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    align-self: flex-end;
+    max-width: 80%;
+}
+
+.assistantMessage {
+    background: #f3f4f6;
+    align-self: flex-start;
+    max-width: 80%;
+}
+
+.messageContent {
+    flex: 1;
+}
+
+.messageHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.messageIcon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-weight: 600;
-    margin-bottom: 1.5rem;
-    text-align: center;
+    color: white;
+}
+
+.userIcon {
+    background: linear-gradient(90deg, #2563eb, #4f46e5);
+}
+
+.assistantIcon {
+    background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.messageText {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #1f2937;
+}
+
+.inputContainer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #f6f8fb;
+    padding: 1rem;
+    border-top: 1px solid #e5e7eb;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+}
+
+.inputWrapper {
+    display: flex;
+    gap: 0.5rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 1.5rem;
+    padding: 0.5rem;
+    transition: all 0.2s;
+    width: 70%;
+    max-width: 900px;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.inputWrapper:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
 .queryInput {
-    width: 100%;
-    padding: 1rem;
-    border: 2px solid #e5e7eb;
-    border-radius: 0.5rem;
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 0.5rem 1rem;
     font-size: 1rem;
-    margin-bottom: 1rem;
-    transition: border-color 0.2s;
+    line-height: 1.5;
+    color: #1f2937;
+    resize: none;
+    min-height: 24px;
+    max-height: 120px;
+    overflow-y: auto;
 }
 
 .queryInput:focus {
     outline: none;
-    border-color: #2563eb;
 }
 
 .submitButton {
-    width: 100%;
-    padding: 1rem;
     background: linear-gradient(90deg, #2563eb, #4f46e5);
     color: white;
     border: none;
-    border-radius: 0.5rem;
-    font-size: 1rem;
+    border-radius: 1rem;
+    padding: 0.5rem 1.5rem;
+    font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
 }
 
 .submitButton:hover {
     opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 .submitButton:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
 }
 
-.cityInfo {
+.submitButton svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #2563eb;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.spinnerContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
     background: #f3f4f6;
-    padding: 1.5rem;
     border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
+    width: fit-content;
 }
 
-.cityInfoTitle {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.professionInfo {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #2563eb;
-}
-
-.analysisSection {
-    max-width: 900px;
-    margin: 2rem auto;
-}
-
-.vacancyCount {
-    text-align: center;
-    font-size: 1.1rem;
+.spinnerText {
     color: #4b5563;
-    margin-bottom: 1rem;
-}
-
-.analysisContainer {
-    background: white;
-    padding: 2rem;
-    border-radius: 1rem;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-}
-
-.analysisTitle {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 2rem;
-    text-align: center;
+    font-size: 0.875rem;
 }
 
 .skillsSection {
-    margin-bottom: 2rem;
+    margin-top: 1rem;
 }
 
 .skillsTitle {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     color: #1f2937;
 }
 
@@ -140,12 +212,10 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 1rem;
-    max-width: 800px;
-    margin: 0 auto;
 }
 
 .skillCard {
-    background: #f9fafb;
+    background: white;
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
     padding: 1rem;
@@ -165,7 +235,7 @@
 }
 
 .skillName {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     color: #2563eb;
     margin: 0;
@@ -204,33 +274,14 @@
     border-radius: 0.5rem;
 }
 
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #2563eb;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto;
-}
-
-.spinnerContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    padding: 2rem;
-}
-
-.spinnerText {
-    color: #4b5563;
-    font-size: 1.1rem;
-    font-weight: 500;
-}
-
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 640px) {
@@ -242,11 +293,30 @@
         font-size: 2rem;
     }
 
-    .querySection {
-        padding: 1.5rem;
+    .message {
+        padding: 1rem;
     }
 
-    .analysisContainer {
-        padding: 1.5rem;
+    .userMessage,
+    .assistantMessage {
+        max-width: 90%;
+    }
+
+    .inputContainer {
+        padding: 0.75rem;
+    }
+
+    .inputWrapper {
+        padding: 0.375rem;
+    }
+
+    .queryInput {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .submitButton {
+        padding: 0.375rem 1rem;
+        font-size: 0.75rem;
     }
 } 
