@@ -74,7 +74,7 @@ def extract_city(request):
                 return JsonResponse({"error": "No query provided"}, status=400)
             
             gpt = YandexGPT()
-            result = gpt.generate_text(f"Извлеки название города или региона из текста. Верни только название города, без дополнительных слов.\n\nТекст: {query}")
+            result = gpt.extract_city(f"Извлеки название города или региона из текста. Верни только название города, без дополнительных слов.\n\nТекст: {query}")
             
             return JsonResponse({"city": result.strip()})
         except Exception as e:
@@ -92,7 +92,7 @@ def extract_professional_role(request):
                 return JsonResponse({"error": "No query provided"}, status=400)
             
             gpt = YandexGPT()
-            result = gpt.generate_text(f"Извлеки название профессии или должности из текста. Верни только название профессии, без дополнительных слов.\n\nТекст: {query}")
+            result = gpt.extract_professional_role(f"Извлеки название профессии или должности из текста. Верни только название профессии, без дополнительных слов.\n\nТекст: {query}")
             
             return JsonResponse({"role": result.strip()})
         except Exception as e:

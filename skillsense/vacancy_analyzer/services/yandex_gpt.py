@@ -71,15 +71,19 @@ class YandexGPT:
         return response['result']['alternatives'][0]['message']['text']
 
     def extract_professional_role(self, prompt):
+        
         system_prompt_for_extract_professional_role = (
-                "Ты - помощник по извлечению названий профессий из текста. "
-                "Твоя задача - найти и вернуть только название профессии из текста. "
-                "Если в тексте нет профессии, верни пустую строку. "
-                "Возвращай только название профессии, без дополнительных слов, символов и форматирования, без примечаний. " 
-                "ВЕРНИ ТОЛЬКО НАЗВАНИЕ ПРОФЕСИИ!!!"           
-            )
+            "Ты — помощник по извлечению названий профессий из текста. "
+            "Твоя задача — найти и вернуть только название профессии. "
+            "Игнорируй города, регионы и другие дополнительные слова. "
+            "Примеры: "
+            "- Из 'Продавец в Улан-Удэ' → 'Продавец' "
+            "- Из 'Разработчик Python в Москве' → 'Разработчик' "
+            "- Из 'Менеджер по продажам' → 'Менеджер по продажам' "
+            "Верни только название профессии, без кавычек и точек."
+        )
 
-        data = {
+        data_for_extract_professional_role = {
             "modelUri": f"gpt://{folder_id}/yandexgpt",
             "completionOptions": {"temperature": 0.3, "maxTokens": 1000},
             "messages": [
@@ -97,7 +101,7 @@ class YandexGPT:
                 "Accept": "application/json",
                 "Authorization": f"Bearer {iam_token}"
             },
-            json=data,
+            json=data_for_extract_professional_role,
         ).json()
 
         # Очищаем ответ от возможных JSON-структур и форматирования
