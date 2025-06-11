@@ -62,3 +62,39 @@ def analyze_vacancy(request):
             return JsonResponse({'error': str(e)}, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+@csrf_exempt
+def extract_city(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            query = data.get('query')
+            
+            if not query:
+                return JsonResponse({"error": "No query provided"}, status=400)
+            
+            gpt = YandexGPT()
+            result = gpt.generate_text(f"Извлеки название города или региона из текста. Верни только название города, без дополнительных слов.\n\nТекст: {query}")
+            
+            return JsonResponse({"city": result.strip()})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Only POST allowed"}, status=400)
+
+@csrf_exempt
+def extract_professional_role(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            query = data.get('query')
+            
+            if not query:
+                return JsonResponse({"error": "No query provided"}, status=400)
+            
+            gpt = YandexGPT()
+            result = gpt.generate_text(f"Извлеки название профессии или должности из текста. Верни только название профессии, без дополнительных слов.\n\nТекст: {query}")
+            
+            return JsonResponse({"role": result.strip()})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Only POST allowed"}, status=400)

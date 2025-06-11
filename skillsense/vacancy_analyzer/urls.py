@@ -8,4 +8,6 @@ urlpatterns = [
     path('api/professional-roles/', views.get_professional_roles, name='get_professional_roles'),
     path('api/yandex-cloud/clouds/', views.list_clouds, name='list_clouds'),
     path('api/yandex-cloud/clouds/<str:cloud_id>/', views.get_cloud, name='get_cloud'),
+    path('api/extract-city/', views.extract_city, name='extract_city'),
+    path('api/extract-professional-role/', views.extract_professional_role, name='extract_professional_role'),
 ] 

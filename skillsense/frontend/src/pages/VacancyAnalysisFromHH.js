@@ -1,53 +1,115 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
+import hhAreas from '../assets/hh_areas.json';
 
 const HH_API_BASE_URL = 'https://api.hh.ru';
 
 const VacancyAnalysisFromHH = () => {
-    const [areas, setAreas] = useState([]);
-    const [city, setCity] = useState("");
+    const [areas, setAreas] = useState(hhAreas);
+    const [query, setQuery] = useState("");
     const [foundCity, setFoundCity] = useState(null);
     const [jobTitle, setJobTitle] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [analysisResult, setAnalysisResult] = useState('');
+    const [analysisResult, setAnalysisResult] = useState(null);
     const [vacancyCount, setVacancyCount] = useState(0);
+    const [expandedSkills, setExpandedSkills] = useState({});
 
-    useEffect(() => {
-        // Загружаем список регионов
-        console.log('Fetching areas from HH.ru API...');
-        axios.get(`${HH_API_BASE_URL}/areas`)
-            .then(response => {
-                console.log('Areas response:', response.data);
-                setAreas(response.data);
-            })
-            .catch(error => {
-                console.error('Error fetching areas:', {
-                    message: error.message,
-                    status: error.response?.status,
-                    data: error.response?.data
-                });
-                setError('Ошибка при загрузке списка регионов: ' + error.message);
+    const handleQuerySubmit = async () => {
+        if (query.trim() === "") return;
+        
+        setIsLoading(true);
+        setError(null);
+        setAnalysisResult(null);
+        setVacancyCount(0);
+        
+        try {
+            // Используем локальный файл с регионами
+            console.log('Using local areas data...');
+            console.log('All regions and areas:', JSON.stringify(areas, null, 2));
+            
+
+            // 1. Извлекаем город из запроса
+            const cityResponse = await axios.post('http://127.0.0.1:8000/api/extract-city/', {
+                query: query
             });
-    }, []);
-
-    const handleCitySearch = () => {
-        if (city.trim() === "") return;
-        const result = findCity(city, areas);
-        setFoundCity(result);
+            
+            // Очищаем название города от возможных JSON-артефактов
+            let extractedCity = cityResponse.data.city;
+            if (typeof extractedCity === 'string') {
+                // Удаляем все, что похоже на JSON
+                extractedCity = extractedCity.split('{')[0].split('}')[0].split('[')[0].split(']')[0];
+                // Удаляем обратные кавычки, точки, невидимые символы и лишние пробелы
+                extractedCity = extractedCity
+                    .replace(/`/g, '')
+                    .replace(/\./g, '')
+                    .replace(/[\u200B-\u200D\uFEFF]/g, '') // Удаляем zero-width spaces и другие невидимые символы
+                    .replace(/\s+/g, ' ') // Заменяем все пробельные символы на один пробел
+                    .trim();
+            }
+            
+            if (!extractedCity) {
+                throw new Error('Не удалось определить город из запроса');
+            }
+            
+            console.log('Extracted city:', extractedCity); // Для отладки
+            
+            // 2. Находим ID города в базе HH.ru
+            const result = findCity(extractedCity, areas);
+            if (!result) {
+                throw new Error(`Город "${extractedCity}" не найден в базе данных`);
+            }
+            
+            setFoundCity(result);
+            
+            // 3. Извлекаем профессию из запроса
+            const roleResponse = await axios.post('http://127.0.0.1:8000/api/extract-professional-role/', {
+                query: query
+            });
+            
+            const extractedRole = roleResponse.data.role?.trim();
+            if (!extractedRole) {
+                throw new Error('Не удалось определить профессию из запроса');
+            }
+            
+            setJobTitle(extractedRole);
+            
+            // 4. Ищем и анализируем вакансии
+            await searchVacancies();
+            
+        } catch (error) {
+            console.error('Error processing query:', error);
+            setError(error.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     function findCity(cityName, data) {
-        const exactMatch = findExactMatch(cityName, data);
+        const trimmedCityName = cityName
+            .trim()
+            .replace(/[\u200B-\u200D\uFEFF]/g, '') // Удаляем zero-width spaces и другие невидимые символы
+            .replace(/\s+/g, ' ')
+            .toLowerCase();
+        const exactMatch = findExactMatch(trimmedCityName, data);
         if (exactMatch) return exactMatch;
-        return findPartialMatch(cityName, data);
+        return findPartialMatch(trimmedCityName, data);
     }
 
     function findExactMatch(cityName, data) {
+        const trimmedCityName = cityName
+            .trim()
+            .replace(/[\u200B-\u200D\uFEFF]/g, '') // Удаляем zero-width spaces и другие невидимые символы
+            .replace(/\s+/g, ' ')
+            .toLowerCase();
         for (const region of data) {
             if (region.areas && Array.isArray(region.areas)) {
                 const foundCity = region.areas.find(area => 
-                    area.name.toLowerCase() === cityName.toLowerCase()
+                    area.name
+                        .trim()
+                        .replace(/[\u200B-\u200D\uFEFF]/g, '') // Удаляем zero-width spaces и другие невидимые символы
+                        .replace(/\s+/g, ' ')
+                        .toLowerCase() === trimmedCityName
                 );
                 
                 if (foundCity) {
@@ -72,10 +134,20 @@ const VacancyAnalysisFromHH = () => {
     }
 
     function findPartialMatch(cityName, data) {
+        const trimmedCityName = cityName
+            .trim()
+            .replace(/[\u200B-\u200D\uFEFF]/g, '') // Удаляем zero-width spaces и другие невидимые символы
+            .replace(/\s+/g, ' ')
+            .toLowerCase();
         for (const region of data) {
             if (region.areas && Array.isArray(region.areas)) {
                 const foundCity = region.areas.find(area => 
-                    area.name.toLowerCase().includes(cityName.toLowerCase())
+                    area.name
+                        .trim()
+                        .replace(/[\u200B-\u200D\uFEFF]/g, '') // Удаляем zero-width spaces и другие невидимые символы
+                        .replace(/\s+/g, ' ')
+                        .toLowerCase()
+                        .includes(trimmedCityName)
                 );
                 
                 if (foundCity) {
@@ -101,7 +173,6 @@ const VacancyAnalysisFromHH = () => {
 
     const analyzeVacancies = async (vacancies) => {
         try {
-            // Создаем единый промпт из всех вакансий
             const combinedPrompt = vacancies.map((vacancy, index) => `
                 ${vacancy.snippet?.requirement || ''}
                 ---
@@ -111,20 +182,45 @@ const VacancyAnalysisFromHH = () => {
                 prompt: `Проанализируй следующие вакансии и выдели общие навыки и требования, которые встречаются чаще всего:\n\n${combinedPrompt}`
             });
 
-            return response.data;
+            // Log the raw response for debugging
+            console.log('Raw response:', response.data);
+
+            // Clean the response string by removing backticks and any extra whitespace
+            let cleanedResponse = response.data;
+            
+            // Remove markdown code block markers if they exist
+            if (typeof cleanedResponse === 'string') {
+                // Remove any markdown code block markers
+                cleanedResponse = cleanedResponse
+                    .replace(/```json\s*/g, '')
+                    .replace(/```\s*/g, '')
+                    .replace(/`/g, '')  // Remove any remaining backticks
+                    .trim();
+
+                // Log the cleaned response for debugging
+                console.log('Cleaned response:', cleanedResponse);
+
+                try {
+                    // Parse the cleaned JSON string into an object
+                    const skillsData = JSON.parse(cleanedResponse);
+                    return skillsData;
+                } catch (parseError) {
+                    console.error('JSON Parse error:', parseError);
+                    console.error('Failed to parse string:', cleanedResponse);
+                    throw new Error('Failed to parse skills data');
+                }
+            } else {
+                // If response is already an object, return it directly
+                return cleanedResponse;
+            }
         } catch (error) {
             console.error('Error analyzing vacancies:', error);
-            return 'Ошибка при анализе вакансий';
+            return null;
         }
     };
 
     const searchVacancies = async () => {
         if (!foundCity || !jobTitle.trim()) return;
-        
-        setIsLoading(true);
-        setError(null);
-        setAnalysisResult('');
-        setVacancyCount(0);
         
         console.log('Searching vacancies with params:', {
             area: foundCity.city.id,
@@ -171,9 +267,56 @@ const VacancyAnalysisFromHH = () => {
             }
             
             setError(errorMessage);
-        } finally {
-            setIsLoading(false);
         }
+    };
+
+    const toggleSkill = (skillType, index) => {
+        const key = `${skillType}-${index}`;
+        setExpandedSkills(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
+
+    const renderSkillsSection = (title, skills, skillType) => {
+        if (!skills || skills.length === 0) return null;
+
+        return (
+            <div className="mb-8">
+                <h4 className="text-xl font-semibold mb-4">{title}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {skills.map((skill, index) => {
+                        const isExpanded = expandedSkills[`${skillType}-${index}`];
+                        return (
+                            <div 
+                                key={index} 
+                                className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow cursor-pointer"
+                                onClick={() => toggleSkill(skillType, index)}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <h5 className="text-lg font-medium text-blue-600">{skill.name}</h5>
+                                    <span className="text-blue-500">
+                                        {isExpanded ? '▼' : '▶'}
+                                    </span>
+                                </div>
+                                {isExpanded && (
+                                    <div className="mt-3 space-y-3">
+                                        <div>
+                                            <h6 className="text-sm font-medium text-gray-700 mb-1">Описание:</h6>
+                                            <p className="text-gray-600">{skill.description}</p>
+                                        </div>
+                                        <div className="bg-blue-50 rounded p-3">
+                                            <h6 className="text-sm font-medium text-blue-800 mb-1">Как освоить:</h6>
+                                            <p className="text-sm text-blue-700">{skill.how_to_learn}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -187,20 +330,25 @@ const VacancyAnalysisFromHH = () => {
             )}
             
             <div className="mb-6">
-                <h3 className="text-xl font-semibold mb-2">Поиск города</h3>
+                <h3 className="text-xl font-semibold mb-2">Введите ваш запрос</h3>
                 <div className="flex gap-2">
                     <input
                         type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        placeholder="Введите название города или региона"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Например: Ищу работу Python разработчика в Москве"
                         className="flex-1 p-2 border rounded"
                     />
                     <button 
-                        onClick={handleCitySearch}
-                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        onClick={handleQuerySubmit}
+                        disabled={isLoading}
+                        className={`px-4 py-2 rounded text-white ${
+                            isLoading 
+                                ? 'bg-gray-400 cursor-not-allowed' 
+                                : 'bg-blue-500 hover:bg-blue-600'
+                        }`}
                     >
-                        Поиск города
+                        {isLoading ? 'Обработка...' : 'Анализировать'}
                     </button>
                 </div>
             </div>
@@ -215,27 +363,8 @@ const VacancyAnalysisFromHH = () => {
                     </div>
 
                     <div>
-                        <h3 className="text-xl font-semibold mb-2">Поиск вакансий</h3>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={jobTitle}
-                                onChange={(e) => setJobTitle(e.target.value)}
-                                placeholder="Введите название должности"
-                                className="flex-1 p-2 border rounded"
-                            />
-                            <button 
-                                onClick={searchVacancies}
-                                disabled={isLoading}
-                                className={`px-4 py-2 rounded text-white ${
-                                    isLoading 
-                                        ? 'bg-gray-400 cursor-not-allowed' 
-                                        : 'bg-blue-500 hover:bg-blue-600'
-                                }`}
-                            >
-                                {isLoading ? 'Поиск и анализ...' : 'Найти и проанализировать'}
-                            </button>
-                        </div>
+                        <h3 className="text-xl font-semibold mb-2">Найдена профессия:</h3>
+                        <p className="p-4 bg-gray-50 rounded">{jobTitle}</p>
                     </div>
                 </div>
             )}
@@ -246,9 +375,10 @@ const VacancyAnalysisFromHH = () => {
                         Проанализировано вакансий: {vacancyCount}
                     </div>
                     <div className="p-6 bg-white rounded-lg shadow-sm border">
-                        <h3 className="text-2xl font-semibold mb-4">Результаты анализа:</h3>
-                        <div className="prose max-w-none">
-                            <p className="whitespace-pre-wrap">{analysisResult}</p>
+                        <h3 className="text-2xl font-semibold mb-6">Результаты анализа:</h3>
+                        <div className="space-y-8">
+                            {renderSkillsSection("Hard Skills (Профессиональные навыки)", analysisResult.hard_skills, 'hard')}
+                            {renderSkillsSection("Soft Skills (Гибкие навыки)", analysisResult.soft_skills, 'soft')}
                         </div>
                     </div>
                 </div>
