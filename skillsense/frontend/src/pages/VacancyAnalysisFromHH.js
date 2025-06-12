@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import hhAreas from '../assets/hh_areas.json';
-import styles from './VacancyAnalysisFromHH.module.css';
+import styles from '../styles/VacancyAnalysisFromHH.module.css';
 
 const HH_API_BASE_URL = 'https://api.hh.ru';
 

@@ -1,13 +1,15 @@
 from django.urls import path
-from .api.yandex_gpt_api import generate_text
 from . import views
+from rest_framework_simplejwt.views import TokenRefreshView
+from .views import (
+    UserRegistrationView,
+    UserLoginView,
+    UserProfileView,
+)
 
 urlpatterns = [
-    path('api/yandex-gpt/generate/', generate_text, name='yandex-gpt-generate'),
-    path('api/analyze/', views.analyze_vacancy, name='analyze_vacancy'),
-    path('api/professional-roles/', views.get_professional_roles, name='get_professional_roles'),
-    path('api/yandex-cloud/clouds/', views.list_clouds, name='list_clouds'),
-    path('api/yandex-cloud/clouds/<str:cloud_id>/', views.get_cloud, name='get_cloud'),
-    path('api/extract-city/', views.extract_city, name='extract_city'),
-    path('api/extract-professional-role/', views.extract_professional_role, name='extract_professional_role'),
+    path('auth/register/', UserRegistrationView.as_view(), name='register'),
+    path('auth/login/', UserLoginView.as_view(), name='login'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/profile/', UserProfileView.as_view(), name='profile'),
 ] 
