@@ -22,14 +22,8 @@ const Header = () => {
                 <nav className={styles.nav}>
                     {isAuthenticated ? (
                         <>
-                            <Link to="/analyzer" className={styles.navLink}>
-                                Анализатор
-                            </Link>
-                            <Link to="/vacancy-analysis" className={styles.navLink}>
-                                Анализ вакансий
-                            </Link>
                             <Link to="/vacancy-analysis-hh" className={styles.navLink}>
-                                Анализ HH
+                                Анализ
                             </Link>
                             <button onClick={handleLogout} className={styles.logoutButton}>
                                 Выйти

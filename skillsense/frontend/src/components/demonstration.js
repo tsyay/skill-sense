@@ -15,7 +15,7 @@ const Demonstration = () => {
     const demoData = {
         developer: {
           title: "Python разработчик",
-          description: "Анализ 1,245 вакансий за последние 30 дней",
+          description: "Анализ 30 вакансий за последние 30 дней",
           location: "Москва",
           jobCount: 1245,
           salary: {
@@ -27,15 +27,15 @@ const Demonstration = () => {
           skills: [
             { name: "Python", percentage: 100, isHighDemand: true },
             { name: "SQL", percentage: 85, isHighDemand: true },
-            { name: "Django", percentage: 65, isHighDemand: false },
+            { name: "Django", percentage: 65, isHighDemand: true },
             { name: "Docker", percentage: 58, isHighDemand: true },
+            { name: "FastAPI", percentage: 48, isHighDemand: true },
             { name: "Flask", percentage: 42, isHighDemand: false },
-            { name: "FastAPI", percentage: 38, isHighDemand: true },
           ]
         },
         analyst: {
           title: "Аналитик данных",
-          description: "Анализ 876 вакансий за последние 30 дней",
+          description: "Анализ 17 вакансий за последние 30 дней",
           location: "Москва",
           jobCount: 876,
           salary: {
@@ -55,7 +55,7 @@ const Demonstration = () => {
         },
         manager: {
           title: "Продукт-менеджер",
-          description: "Анализ 543 вакансий за последние 30 дней",
+          description: "Анализ 27 вакансий за последние 30 дней",
           location: "Москва",
           jobCount: 543,
           salary: {
@@ -67,9 +67,9 @@ const Demonstration = () => {
           skills: [
             { name: "Управление продуктом", percentage: 100, isHighDemand: true },
             { name: "Agile/Scrum", percentage: 85, isHighDemand: true },
-            { name: "Проведение исследований", percentage: 75, isHighDemand: false },
+            { name: "Проведение исследований", percentage: 75, isHighDemand: true },
             { name: "Английский язык", percentage: 70, isHighDemand: true },
-            { name: "Аналитика", percentage: 65, isHighDemand: true },
+            { name: "Аналитика", percentage: 65, isHighDemand: false },
             { name: "Прототипирование", percentage: 50, isHighDemand: false },
           ]
         }

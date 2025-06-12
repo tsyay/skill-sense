@@ -15,15 +15,11 @@ const Hero = () => {
                 <div className='hero-subtitle'>
                     <h3>Платформа для глубокого анализа рынка труда, навыков и требований по вакансиям с помощью нейросетей.</h3>
                 </div>
-                <div className='cta-buttons'>
-                    <a className='cta-button gradient-link' href='#' >Попробовать бесплатно</a>
-                    <a className='cta-button' href='#' >Узнать больше</a>
-                </div>
-                <form className='prompt-form'>
+                <div className='prompt-form'>
                     <img src={searchLogo}/>
                     <input type='text' placeholder={'Москва, Python разработчик'}></input>
-                    <button type='submit'>Анализировать</button>
-                </form>
+                    <a href='http://localhost:8000/vacancy-analysis-hh' className='analyze-button'>Анализировать</a>
+                </div>
             </div>
         </section>
     )
