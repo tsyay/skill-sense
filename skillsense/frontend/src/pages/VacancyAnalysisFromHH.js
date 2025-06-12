@@ -16,6 +16,136 @@ const VacancyAnalysisFromHH = () => {
     const [vacancyCount, setVacancyCount] = useState(0);
     const [expandedSkills, setExpandedSkills] = useState({});
 
+    const searchVacancies = async () => {
+        if (!foundCity || !jobTitle.trim()) {
+            console.error('Missing required data:', { foundCity, jobTitle });
+            return [];
+        }
+        
+        try {
+            const response = await axios.get(`${HH_API_BASE_URL}/vacancies`, {
+                params: {
+                    area: foundCity.city.id,
+                    experience: "noExperience",
+                    text: jobTitle,
+                    per_page: 20
+                },
+            });
+            
+            if (!response.data || !response.data.items) {
+                throw new Error('Некорректный ответ от API вакансий');
+            }
+
+            setVacancyCount(response.data.items.length);
+            return response.data.items;
+
+        } catch (error) {
+            console.error('Error searching vacancies:', error);
+            throw new Error('Ошибка при поиске вакансий: ' + error.message);
+        }
+    };
+
+    const extractRequirements = (vacancies) => {
+        if (!vacancies || vacancies.length === 0) {
+            throw new Error('Нет вакансий для анализа');
+        }
+
+        // Собираем требования из вакансий
+        const requirements = vacancies.map(vacancy => {
+            const requirements = [];
+            if (vacancy.snippet?.requirement) {
+                requirements.push(vacancy.snippet.requirement);
+            }
+            if (vacancy.snippet?.responsibility) {
+                requirements.push(vacancy.snippet.responsibility);
+            }
+            return requirements.join(' ');
+        });
+
+        const filteredRequirements = requirements.filter(req => req.trim().length > 0);
+
+        if (filteredRequirements.length === 0) {
+            throw new Error('Не найдено требований в вакансиях');
+        }
+
+        return filteredRequirements;
+    };
+
+    const calculateAverageSalary = (vacancies) => {
+        if (!vacancies || vacancies.length === 0) {
+            return null;
+        }
+
+        // Фильтруем вакансии с указанной зарплатой
+        const salaries = vacancies
+            .filter(vacancy => vacancy.salary)
+            .map(vacancy => {
+                const { salary } = vacancy;
+                // Если указан диапазон, берем среднее значение
+                if (salary.from && salary.to) {
+                    return {
+                        value: (salary.from + salary.to) / 2,
+                        from: salary.from,
+                        to: salary.to
+                    };
+                }
+                // Если указана только нижняя граница
+                if (salary.from) {
+                    return {
+                        value: salary.from,
+                        from: salary.from,
+                        to: null
+                    };
+                }
+                // Если указана только верхняя граница
+                if (salary.to) {
+                    return {
+                        value: salary.to,
+                        from: null,
+                        to: salary.to
+                    };
+                }
+                return null;
+            })
+            .filter(salary => salary !== null);
+
+        if (salaries.length === 0) {
+            return null;
+        }
+
+        // Вычисляем среднее значение
+        const sum = salaries.reduce((acc, salary) => acc + salary.value, 0);
+        const average = Math.round(sum / salaries.length);
+
+        // Находим минимальную и максимальную зарплату
+        const minSalary = Math.min(...salaries.map(s => s.from || s.value));
+        const maxSalary = Math.max(...salaries.map(s => s.to || s.value));
+
+        return {
+            average,
+            range: {
+                min: minSalary,
+                max: maxSalary
+            }
+        };
+    };
+
+    const formatSalaryInfo = (salaryData) => {
+        if (!salaryData) return null;
+        
+        const { average, range } = salaryData;
+        const formattedAverage = average.toLocaleString();
+        const formattedMin = range.min.toLocaleString();
+        const formattedMax = range.max.toLocaleString();
+        
+        return `
+            <div class="${styles.salaryInfo}">
+                <p class="${styles.averageSalary}">${formattedAverage} ₽</p>
+                <p class="${styles.salaryRange}">от ${formattedMin} до ${formattedMax} ₽</p>
+            </div>
+        `;
+    };
+
     const handleQuerySubmit = async () => {
         if (query.trim() === "") return;
         
@@ -69,22 +199,28 @@ const VacancyAnalysisFromHH = () => {
             // Ждем обновления состояния
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            // 4. Ищем вакансии и собираем требования
-            const requirements = await searchVacancies();
+            // 4. Ищем вакансии
+            const vacancies = await searchVacancies();
             
-            if (!requirements || requirements.length === 0) {
-                throw new Error('Не удалось найти требования в вакансиях');
-            }
+            // 5. Вычисляем среднюю зарплату и диапазон
+            const salaryData = calculateAverageSalary(vacancies);
+            const formattedSalary = formatSalaryInfo(salaryData);
+            
+            // 6. Извлекаем требования из вакансий
+            const requirements = extractRequirements(vacancies);
 
-            // 5. Анализируем собранные требования
+            // 7. Анализируем собранные требования
             const analysisResult = await analyzeVacancies(requirements);
             
             if (!analysisResult) {
                 throw new Error('Не удалось проанализировать требования');
             }
 
-            // Устанавливаем результат анализа
-            setAnalysisResult(analysisResult);
+            // Устанавливаем результат анализа вместе с информацией о зарплате
+            setAnalysisResult({
+                ...analysisResult,
+                salary: formattedSalary
+            });
             
             // Очищаем поля после успешного анализа
             setQuery("");
@@ -184,54 +320,6 @@ const VacancyAnalysisFromHH = () => {
         }
         return null;
     }
-
-    const searchVacancies = async () => {
-        if (!foundCity || !jobTitle.trim()) {
-            console.error('Missing required data:', { foundCity, jobTitle });
-            return [];
-        }
-        
-        try {
-            const response = await axios.get(`${HH_API_BASE_URL}/vacancies`, {
-                params: {
-                    area: foundCity.city.id,
-                    experience: "noExperience",
-                    text: jobTitle,
-                    per_page: 20
-                },
-            });
-            
-            if (!response.data || !response.data.items) {
-                throw new Error('Некорректный ответ от API вакансий');
-            }
-
-            setVacancyCount(response.data.items.length);
-
-            // Собираем требования из вакансий
-            const requirements = response.data.items
-                .map(vacancy => {
-                    const requirements = [];
-                    if (vacancy.snippet?.requirement) {
-                        requirements.push(vacancy.snippet.requirement);
-                    }
-                    if (vacancy.snippet?.responsibility) {
-                        requirements.push(vacancy.snippet.responsibility);
-                    }
-                    return requirements.join(' ');
-                })
-                .filter(req => req.trim().length > 0);
-
-            if (requirements.length === 0) {
-                throw new Error('Не найдено требований в вакансиях');
-            }
-
-            return requirements;
-
-        } catch (error) {
-            console.error('Error searching vacancies:', error);
-            throw new Error('Ошибка при поиске вакансий: ' + error.message);
-        }
-    };
 
     const analyzeVacancies = async (requirements) => {
         try {
@@ -371,6 +459,9 @@ const VacancyAnalysisFromHH = () => {
                             </div>
                             <div className={styles.messageText}>
                                 <p>Проанализировано вакансий: {vacancyCount}</p>
+                                {analysisResult.salary && (
+                                    <div dangerouslySetInnerHTML={{ __html: analysisResult.salary }} />
+                                )}
                                 <div className={styles.skillsSection}>
                                     {renderSkillsSection("Hard Skills (Профессиональные навыки)", analysisResult.hard_skills, 'hard')}
                                     {renderSkillsSection("Soft Skills (Гибкие навыки)", analysisResult.soft_skills, 'soft')}
