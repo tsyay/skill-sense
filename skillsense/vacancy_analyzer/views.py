@@ -4,6 +4,12 @@ from django.views.decorators.csrf import csrf_exempt
 from .services.yandex_gpt import YandexGPT
 from .services.hh_api import HHAPI
 import json
+from rest_framework import status, generics
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
+from .serializers import UserRegistrationSerializer, UserLoginSerializer, UserSerializer
 
 # Create your views here.
 def front(request):
@@ -99,20 +105,53 @@ def extract_professional_role(request):
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Only POST allowed"}, status=400)
 
-@csrf_exempt
-def generate_text_about_skill(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            query = data.get('query')
-            
-            if not query:
-                return JsonResponse({"error": "No query provided"}, status=400)
-            
-            gpt = YandexGPT()
-            result = gpt.extract_professional_role(f"Дополни информацию о навыке.\n\nТекст: {query}")
-            
-            return JsonResponse({"role": result.strip()})
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-    return JsonResponse({"error": "Only POST allowed"}, status=400)
+class UserRegistrationView(generics.CreateAPIView):
+    permission_classes = (AllowAny,)
+    serializer_class = UserRegistrationSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        refresh = RefreshToken.for_user(user)
+        
+        return Response({
+            'user': UserSerializer(user).data,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }, status=status.HTTP_201_CREATED)
+
+class UserLoginView(generics.CreateAPIView):
+    permission_classes = (AllowAny,)
+    serializer_class = UserLoginSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = authenticate(
+            username=serializer.validated_data['username'],
+            password=serializer.validated_data['password']
+        )
+        
+        if not user:
+            return Response(
+                {'error': 'Invalid credentials'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        refresh = RefreshToken.for_user(user)
+        
+        return Response({
+            'user': UserSerializer(user).data,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        })
+
+class UserProfileView(generics.RetrieveUpdateAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserSerializer
+
+    def get_object(self):
+        return self.request.user

@@ -1,31 +1,54 @@
 import React from 'react';
-import '../styles/header.css';
+import { Link, useNavigate } from 'react-router-dom';
+import styles from './header.module.css';
 
 const Header = () => {
-  return (
-    <header className="header">
-      <div className="header-container">
-        <div className="logo">
-          <h1>SkillSense</h1>
-        </div>
-        <nav className="nav">
-          <ul className="nav-list">
-            <li><a href="/" className="nav-link">Главная</a></li>
-            <li><a href="/about" className="nav-link">О нас</a></li>
-            <li><a href="/services" className="nav-link">Услуги</a></li>
-            <li><a href="/contact" className="nav-link">Контакты</a></li>
-            <li><a href="/analyzer" className="nav-link">Анализ</a></li>
-            <li><a href="/vacancy-analysis" className="nav-link">Тест</a></li>
-            <li><a href="/vacancy-analysis-hh" className="nav-link">Анализ HH.ru</a></li>
-          </ul>
-        </nav>
-        <div className="auth-actions">
-            <a className="auth-link" href="/signin"> Войти </a>
-            <a className="auth-link gradient-link" href="/signup"> Попрбовать бесплатно </a>
-        </div>
-      </div>
-    </header>
-  );
+    const navigate = useNavigate();
+    const isAuthenticated = localStorage.getItem('access_token');
+
+    const handleLogout = () => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        navigate('/login');
+    };
+
+    return (
+        <header className={styles.header}>
+            <div className={styles.container}>
+                <Link to="/" className={styles.logo}>
+                    SkillSense
+                </Link>
+                <nav className={styles.nav}>
+                    {isAuthenticated ? (
+                        <>
+                            <Link to="/analyzer" className={styles.navLink}>
+                                Анализатор
+                            </Link>
+                            <Link to="/vacancy-analysis" className={styles.navLink}>
+                                Анализ вакансий
+                            </Link>
+                            <Link to="/vacancy-analysis-hh" className={styles.navLink}>
+                                Анализ HH
+                            </Link>
+                            <button onClick={handleLogout} className={styles.logoutButton}>
+                                Выйти
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <Link to="/login" className={styles.navLink}>
+                                Вход
+                            </Link>
+                            <Link to="/register" className={styles.navLink}>
+                                Регистрация
+                            </Link>
+                        </>
+                    )}
+                </nav>
+            </div>
+        </header>
+    );
 };
 
 export default Header;
