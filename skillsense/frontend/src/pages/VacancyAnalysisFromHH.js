@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import hhAreas from '../assets/hh_areas.json';
 import styles from '../styles/VacancyAnalysisFromHH.module.css';
@@ -9,12 +9,14 @@ const VacancyAnalysisFromHH = () => {
     const [areas, setAreas] = useState(hhAreas);
     const [query, setQuery] = useState("");
     const [foundCity, setFoundCity] = useState(null);
+    const [extractedCity, setExtractedCity] = useState(null);
     const [jobTitle, setJobTitle] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [analysisResult, setAnalysisResult] = useState(null);
     const [vacancyCount, setVacancyCount] = useState(0);
     const [expandedSkills, setExpandedSkills] = useState({});
+    const [isResultAnimating, setIsResultAnimating] = useState(false);
 
     const searchVacancies = async () => {
         if (!foundCity || !jobTitle.trim()) {
@@ -138,12 +140,11 @@ const VacancyAnalysisFromHH = () => {
         const formattedMin = range.min.toLocaleString();
         const formattedMax = range.max.toLocaleString();
         
-        return `
-            <div class="${styles.salaryInfo}">
-                <p class="${styles.averageSalary}">${formattedAverage} ₽</p>
-                <p class="${styles.salaryRange}">от ${formattedMin} до ${formattedMax} ₽</p>
-            </div>
-        `;
+        return {
+            average: formattedAverage,
+            min: formattedMin,
+            max: formattedMax
+        };
     };
 
     const handleQuerySubmit = async () => {
@@ -154,6 +155,7 @@ const VacancyAnalysisFromHH = () => {
         setAnalysisResult(null);
         setVacancyCount(0);
         setExpandedSkills({});
+        setExtractedCity(null);
         
         try {
             // 1. Извлекаем город из запроса
@@ -162,9 +164,9 @@ const VacancyAnalysisFromHH = () => {
             });
             
             // Очищаем название города от возможных JSON-артефактов
-            let extractedCity = cityResponse.data.city;
-            if (typeof extractedCity === 'string') {
-                extractedCity = extractedCity
+            let extractedCityName = cityResponse.data.city;
+            if (typeof extractedCityName === 'string') {
+                extractedCityName = extractedCityName
                     .replace(/`/g, '')
                     .replace(/\./g, '')
                     .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -172,14 +174,14 @@ const VacancyAnalysisFromHH = () => {
                     .trim();
             }
             
-            if (!extractedCity) {
+            if (!extractedCityName) {
                 throw new Error('Не удалось определить город из запроса');
             }
             
             // 2. Находим ID города в базе HH.ru
-            const result = findCity(extractedCity, areas);
+            const result = findCity(extractedCityName, areas);
             if (!result) {
-                throw new Error(`Город "${extractedCity}" не найден в базе данных`);
+                throw new Error(`Город "${extractedCityName}" не найден в базе данных`);
             }
             
             // 3. Извлекаем профессию из запроса
@@ -194,6 +196,7 @@ const VacancyAnalysisFromHH = () => {
 
             // Устанавливаем найденные данные
             setFoundCity(result);
+            setExtractedCity(extractedCityName);
             setJobTitle(extractedRole);
 
             // Ждем обновления состояния
@@ -222,14 +225,45 @@ const VacancyAnalysisFromHH = () => {
                 salary: formattedSalary
             });
             
+            // Запускаем анимацию появления результатов
+            setIsResultAnimating(true);
+            setTimeout(() => setIsResultAnimating(false), 400);
+            
             // Очищаем поля после успешного анализа
             setQuery("");
             setFoundCity(null);
+            setExtractedCity(null);
             setJobTitle("");
             
         } catch (error) {
             console.error('Error processing query:', error);
-            setError(error.message);
+            
+            // Определяем тип ошибки и показываем соответствующее сообщение
+            let errorMessage = error.message;
+            
+            if (error.response) {
+                // Ошибка от сервера
+                if (error.response.data && error.response.data.error) {
+                    if (error.response.data.parse_error) {
+                        // Детальная ошибка парсинга JSON
+                        errorMessage = `Ошибка парсинга JSON: ${error.response.data.parse_error}`;
+                        if (error.response.data.raw_response) {
+                            console.error('Raw AI response:', error.response.data.raw_response);
+                        }
+                    } else {
+                        errorMessage = error.response.data.error;
+                    }
+                } else if (error.response.status === 500) {
+                    errorMessage = 'Внутренняя ошибка сервера. Попробуйте позже.';
+                } else if (error.response.status === 404) {
+                    errorMessage = 'Сервис временно недоступен. Попробуйте позже.';
+                }
+            } else if (error.request) {
+                // Ошибка сети
+                errorMessage = 'Ошибка соединения с сервером. Проверьте интернет-соединение.';
+            }
+            
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -329,40 +363,49 @@ const VacancyAnalysisFromHH = () => {
                 prompt: `Проанализируй следующие требования из вакансий ${jobTitle}  и выдели общие навыки и требования, которые встречаются чаще всего, игнорируй все, что по твоему не относится к этой профессии:\n\n${combinedPrompt}`
             });
 
-            // Log the raw response for debugging
             console.log('Raw response:', response.data);
 
-            // Clean the response string by removing backticks and any extra whitespace
-            let cleanedResponse = response.data;
-            
-            // Remove markdown code block markers if they exist
-            if (typeof cleanedResponse === 'string') {
+            // Проверяем, есть ли ошибка в ответе
+            if (response.data.error) {
+                console.error('API Error:', response.data);
+                throw new Error(`Ошибка API: ${response.data.error}`);
+            }
+
+            // Если ответ уже является объектом (валидный JSON), возвращаем его
+            if (typeof response.data === 'object' && response.data !== null) {
+                return response.data;
+            }
+
+            // Если ответ - строка, пытаемся её распарсить
+            if (typeof response.data === 'string') {
+                let cleanedResponse = response.data;
+                
                 // Remove any markdown code block markers
                 cleanedResponse = cleanedResponse
                     .replace(/```json\s*/g, '')
                     .replace(/```\s*/g, '')
-                    .replace(/`/g, '')  // Remove any remaining backticks
+                    .replace(/`/g, '') 
                     .trim();
 
-                // Log the cleaned response for debugging
                 console.log('Cleaned response:', cleanedResponse);
 
                 try {
-                    // Parse the cleaned JSON string into an object
                     const skillsData = JSON.parse(cleanedResponse);
                     return skillsData;
                 } catch (parseError) {
                     console.error('JSON Parse error:', parseError);
                     console.error('Failed to parse string:', cleanedResponse);
-                    throw new Error('Failed to parse skills data');
+                    throw new Error(`Ошибка парсинга JSON: ${parseError.message}. Полученный ответ: ${cleanedResponse.substring(0, 200)}...`);
                 }
-            } else {
-                // If response is already an object, return it directly
-                return cleanedResponse;
             }
+
+            throw new Error('Неожиданный формат ответа от сервера');
         } catch (error) {
             console.error('Error analyzing vacancies:', error);
-            throw new Error('Ошибка при анализе требований');
+            if (error.response && error.response.data && error.response.data.error) {
+                throw new Error(`Ошибка анализа: ${error.response.data.error}`);
+            }
+            throw new Error('Ошибка при анализе требований: ' + error.message);
         }
     };
 
@@ -373,47 +416,8 @@ const VacancyAnalysisFromHH = () => {
             [key]: !prev[key]
         }));
     };
+    
 
-    const renderSkillsSection = (title, skills, skillType) => {
-        if (!skills || skills.length === 0) return null;
-
-        return (
-            <div className={styles.skillsSection}>
-                <h4 className={styles.skillsTitle}>{title}</h4>
-                <div className={styles.skillsGrid}>
-                    {skills.map((skill, index) => {
-                        const isExpanded = expandedSkills[`${skillType}-${index}`];
-                        return (
-                            <div 
-                                key={index} 
-                                className={styles.skillCard}
-                                onClick={() => toggleSkill(skillType, index)}
-                            >
-                                <div className={styles.skillHeader}>
-                                    <h5 className={styles.skillName}>{skill.name}</h5>
-                                    <span className={styles.expandIcon}>
-                                        {isExpanded ? '▼' : '▶'}
-                                    </span>
-                                </div>
-                                {isExpanded && (
-                                    <div className={styles.skillContent}>
-                                        <div>
-                                            <h6 className={styles.skillDescriptionTitle}>Описание:</h6>
-                                            <p className={styles.skillDescription}>{skill.description}</p>
-                                        </div>
-                                        <div className={styles.learningSection}>
-                                            <h6 className={styles.learningTitle}>Как освоить:</h6>
-                                            <p className={styles.learningText}>{skill.how_to_learn}</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className={styles.container}>
@@ -451,24 +455,147 @@ const VacancyAnalysisFromHH = () => {
                 )}
 
                 {analysisResult && !isLoading && (
-                    <div className={`${styles.message} ${styles.assistantMessage}`}>
-                        <div className={styles.messageContent}>
-                            <div className={styles.messageHeader}>
-                                <div className={`${styles.messageIcon} ${styles.assistantIcon}`}>AI</div>
-                                <span>Результаты анализа</span>
-                            </div>
-                            <div className={styles.messageText}>
-                                <p>Проанализировано вакансий: {vacancyCount}</p>
-                                {analysisResult.salary && (
-                                    <div dangerouslySetInnerHTML={{ __html: analysisResult.salary }} />
-                                )}
-                                <div className={styles.skillsSection}>
-                                    {renderSkillsSection("Hard Skills (Профессиональные навыки)", analysisResult.hard_skills, 'hard')}
-                                    {renderSkillsSection("Soft Skills (Гибкие навыки)", analysisResult.soft_skills, 'soft')}
+                    <>
+                        {/* Сообщение со статистикой */}
+                        <div className={`${styles.analysisResult} ${isResultAnimating ? styles.fadeIn : ''}`}>
+                            <div className={styles.resultHeader}>
+                                <h3 className={styles.resultTitle}>{jobTitle}</h3>
+                                <div className={styles.locationBadge}>
+                                    Анализ {vacancyCount} вакансий 
                                 </div>
                             </div>
+                            
+                            <div className={styles.resultContent}>
+                                {/* Секция зарплаты */}
+                                {analysisResult.salary && (
+                                    <div className={styles.salarySection}>
+                                        <h4 className={styles.sectionTitle}>Диапазон зарплат</h4>
+                                        <div className={styles.salaryDisplay}>
+                                            <span className={styles.salaryAmount}>
+                                                {analysisResult.salary.average || 'N/A'}
+                                            </span>
+                                            <span className={styles.salaryCurrency}>₽</span>
+                                        </div>
+                                        <div className={styles.salaryRange}>
+                                            от {analysisResult.salary.min} до {analysisResult.salary.max} ₽
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+
+
+                        {/* Сообщение с подробными навыками */}
+                        <div className={`${styles.analysisResult} ${isResultAnimating ? styles.fadeIn : ''}`}>
+                            <div className={styles.resultHeader}>
+                                <h3 className={styles.resultTitle}>Подробная информация о навыках</h3>
+                                <p className={styles.resultDescription}>
+                                    Описания и способы изучения ключевых компетенций
+                                </p>
+                            </div>
+                            
+                            <div className={styles.resultContent}>
+                                {/* Секция Hard Skills */}
+                                {analysisResult.hard_skills && analysisResult.hard_skills.length > 0 && (
+                                    <div className={styles.skillsSection}>
+                                        <h4 className={styles.sectionTitle}>Hard Skills (Профессиональные навыки)</h4>
+                                        <div className={styles.skillsList}>
+                                            {analysisResult.hard_skills.map((skill, index) => (
+                                                <div key={`hard-${index}`} className={styles.skillItem}>
+                                                    <div className={styles.skillHeader}>
+                                                        <h5 className={styles.skillName}>{skill.name}</h5>
+                                                    </div>
+                                                    <div className={styles.skillDetails}>
+                                                        <p className={styles.skillDescription}>{skill.description}</p>
+                                                        <div className={styles.learningInfo}>
+                                                            <strong>Как освоить:</strong> {skill.how_to_learn}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* Секция Soft Skills */}
+                                {analysisResult.soft_skills && analysisResult.soft_skills.length > 0 && (
+                                    <div className={styles.skillsSection}>
+                                        <h4 className={styles.sectionTitle}>Soft Skills (Гибкие навыки)</h4>
+                                        <div className={styles.skillsList}>
+                                            {analysisResult.soft_skills.map((skill, index) => (
+                                                <div key={`soft-${index}`} className={styles.skillItem}>
+                                                    <div className={styles.skillHeader}>
+                                                        <h5 className={styles.skillName}>{skill.name}</h5>
+                                                    </div>
+                                                    <div className={styles.skillDetails}>
+                                                        <p className={styles.skillDescription}>{skill.description}</p>
+                                                        <div className={styles.learningInfo}>
+                                                            <strong>Как освоить:</strong> {skill.how_to_learn}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Сообщение со статистикой навыков */}
+                        <div className={`${styles.analysisResult} ${isResultAnimating ? styles.fadeIn : ''}`}>
+                            <div className={styles.resultHeader}>
+                                <h3 className={styles.resultTitle}>Статистика навыков</h3>
+                                <p className={styles.resultDescription}>
+                                    Процент требований к навыкам в вакансиях
+                                </p>
+                            </div>
+                            
+                            <div className={styles.resultContent}>
+                                <h4 className={styles.sectionTitle}>Требуемые навыки</h4>
+                                
+                                {/* Объединяем все навыки для статистики */}
+                                {(() => {
+                                    const allSkills = [];
+                                    
+                                    // Добавляем hard skills
+                                    if (analysisResult.hard_skills) {
+                                        analysisResult.hard_skills.forEach(skill => {
+                                            allSkills.push({
+                                                ...skill,
+                                                type: 'hard'
+                                            });
+                                        });
+                                    }
+                                    
+                                    // Добавляем soft skills
+                                    if (analysisResult.soft_skills) {
+                                        analysisResult.soft_skills.forEach(skill => {
+                                            allSkills.push({
+                                                ...skill,
+                                                type: 'soft'
+                                            });
+                                        });
+                                    }
+                                    
+                                    // Сортируем по проценту спроса
+                                    allSkills.sort((a, b) => (b.demand || 0) - (a.demand || 0));
+                                    
+                                    return allSkills.map((skill, index) => (
+                                        <div className={styles.skill} key={`stat-${index}`}>
+                                            <div className={styles.row}> 
+                                                <h3 className={styles.skillName}>{skill.name}</h3>
+                                            </div>
+                                            <progress 
+                                                max={100} 
+                                                value={skill.demand || 50}
+                                                className={styles.progressBar}
+                                            />
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        </div>
+                    </>
                 )}
 
                 {isLoading && (
