@@ -1,9 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/header';
-import Analyzer from './pages/analyzer';
 import MainPage from './pages/mainPage';
-import VacancyAnalysis from './pages/VacancyAnalysis';
 import VacancyAnalysisFromHH from './pages/VacancyAnalysisFromHH';
 import Login from './pages/Login';
 import Register from './pages/Register';
